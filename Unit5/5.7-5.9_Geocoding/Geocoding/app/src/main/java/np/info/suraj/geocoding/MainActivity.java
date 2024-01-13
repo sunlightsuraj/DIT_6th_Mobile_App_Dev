@@ -1,37 +1,35 @@
-package np.info.suraj.locationservice;
+package np.info.suraj.geocoding;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
-import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
-import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
 import java.util.function.Consumer;
 
 public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 123;
     private static final String provider = LocationManager.GPS_PROVIDER;
-    private static final String TREASURE_PROXIMITY_ALERT = "np.info.suraj.locationservice";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        IntentFilter filter = new IntentFilter(TREASURE_PROXIMITY_ALERT);
-        registerReceiver(new ProximityIntentReceiver(), filter);
 
         LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
@@ -49,18 +47,13 @@ public class MainActivity extends AppCompatActivity {
                             public void accept(Location location) {
                                 Log.i("location", "got from getCurrentLocation");
                                 updateWithNewLocation(location);
-                                setProximityAlert(locationManager, location);
                             }
                         });
             }
         } else {
             Log.i("location", "got from getLastKnownLocation");
             updateWithNewLocation(location);
-            setProximityAlert(locationManager, location);
         }
-
-
-        setupLocationRefresh(locationManager);
     }
 
     private void checkPermission() {
@@ -69,22 +62,6 @@ public class MainActivity extends AppCompatActivity {
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                     PERMISSION_REQUEST_CODE);
         }
-    }
-
-    private void setupLocationRefresh(LocationManager locationManager) {
-        String provider = LocationManager.GPS_PROVIDER;
-        int t = 5000; // milliseconds
-        int distance = 1; // meters
-        LocationListener locationListener = new LocationListener() {
-            @Override
-            public void onLocationChanged(@NonNull Location location) {
-                updateWithNewLocation(location);
-            }
-        };
-
-        checkPermission();
-
-        locationManager.requestLocationUpdates(provider, t, distance, locationListener);
     }
 
     private void updateWithNewLocation(Location location) {
@@ -96,25 +73,41 @@ public class MainActivity extends AppCompatActivity {
             double lng = location.getLongitude();
 
             locationString = "Your Location:\n lat: " + lat + " lng: " + lng;
+
+            geocodeCoordinate(lat, lng);
         }
 
         textView.setText(locationString);
     }
 
-    private void setProximityAlert(LocationManager locationManager, Location location) {
-        String locService = Context.LOCATION_SERVICE;
-        if (location != null) {
-            double lat = location.getLatitude();
-            double lng = location.getLongitude();
-            float radius = 0.1f; // meters
-            long expiration = -1; // do not expire
+    private void geocodeCoordinate(double lat, double lng) {
+        TextView addressText = findViewById(R.id.addressText);
+        Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
+        List<Address> addresses;
+        String addressString;
 
-            Intent intent = new Intent(TREASURE_PROXIMITY_ALERT);
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(this, -1, intent, PendingIntent.FLAG_MUTABLE);
+        try {
+            addresses = geocoder.getFromLocation(lat, lng, 5);
 
-            checkPermission();
+            StringBuilder sb = new StringBuilder();
+            if (addresses != null && addresses.size() > 0) {
+                Address address = addresses.get(0);
+                for (int i = 0; i < address.getMaxAddressLineIndex(); i++)
+                    sb.append(address.getAddressLine(i)).append("\n");
+                sb.append(address.getLocality()).append(",");
+                sb.append(address.getPostalCode()).append(",");
+                sb.append(address.getCountryName());
+            }
+            addressString = sb.toString();
 
-            locationManager.addProximityAlert(lat, lng, radius, expiration, pendingIntent);
+            addressText.setText(addressString);
+        } catch (IOException e) {
+            Log.e("geocoder", "IO Exception", e);
         }
+    }
+
+    public void onClickButton(View v) {
+        Intent intent = new Intent(this, SearchLocation.class);
+        startActivity(intent);
     }
 }
