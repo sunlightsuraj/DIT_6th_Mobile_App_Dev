@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "np.info.suraj.geocoding"
+    namespace = "np.info.suraj.mapbased"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "np.info.suraj.geocoding"
+        applicationId = "np.info.suraj.mapbased"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
@@ -37,7 +37,6 @@ android {
 
 dependencies {
 
-    implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
